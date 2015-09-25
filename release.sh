@@ -30,7 +30,7 @@ check_github_release_config() {
     exit 1
   fi
 }
-check_github_release_config
+# check_github_release_config
 
 if ! grep $new_version ./RELEASE_NOTES.md; then
   echoerr "RELEASE_NOTES does not contain a section for $new_version"
