@@ -1,4 +1,4 @@
-# route53copy, copies one domain between two AWS Route53 accounts
+# route53copy, copies resource records between two AWS Route53 accounts
 
 `route53copy` copies resource records from one AWS account to another. It
 creates a `ChangeResourceRecordSet` with `UPSERT` for all `ResourceRecord`s of
