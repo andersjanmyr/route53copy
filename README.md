@@ -4,7 +4,12 @@
 creates a `ChangeResourceRecordSet` with `UPSERT` for all `ResourceRecord`s of
 the source account and sends it to the destination account.
 
-The domain must already exist in both accounts and [AWS Named Profiles](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-multiple-profiles) must be configured for both the source account and the destination account.
+The top-level `SOA` and `NS` are not included in the change set since they
+should already exist in the destination account.
+
+The domain must already exist in both accounts and [AWS Named Profiles](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-multiple-profiles)
+must be configured for both the source account and the destination account.
+
 
 ## Installation
 
