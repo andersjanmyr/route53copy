@@ -123,7 +123,7 @@ func main() {
 
 	args := flag.Args()
 	if len(args) < 3 {
-		fmt.Fprintf(os.Stderr, "Wrong number of arguments, %s < 3", len(args))
+		fmt.Fprintf(os.Stderr, "Wrong number of arguments, %d < 3\n", len(args))
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] <source_profile> <dest_profile> <domain>\n", program)
 		flag.PrintDefaults()
 		os.Exit(1)
