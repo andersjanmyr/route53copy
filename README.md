@@ -41,15 +41,19 @@ $ chmod a+x /usr/local/bin/route53copy
 ## Usage
 
 ```
-$ route53copy
-Usage: route53copy-linux <source_profile> <dest_profile> <domain>
+$ route53copy --help
+Usage: route53copy [options] <source_profile> <dest_profile> <domain>
+  -dry
+        Don't make any changes
+  -help
+        Show help text
+  -version
+        Show version
 ```
 
 ```
 $ route53copy aws_profile1 aws_profile2 example.com
 Number of Records:  55
-Skipping NS record for: example.com.
-Skipping SOA record for: example.com.
 53 records in 'example.com' are copied from aws_profile1-dev to aws_profile2
 {
   Comment: "Importing ALL records from aws_profile",
