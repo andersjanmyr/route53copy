@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -57,7 +58,6 @@ func createChanges(domain string, recordSets []*route53.ResourceRecordSet) []*ro
 	var changes []*route53.Change
 	for _, recordSet := range recordSets {
 		if (*recordSet.Type == "NS" || *recordSet.Type == "SOA") && *recordSet.Name == domain {
-			fmt.Println("Skipping", *recordSet.Type, "record for:", domain)
 			continue
 		}
 		change := &route53.Change{
@@ -97,10 +97,36 @@ func updateRecords(sourceProfile, destProfile, domain string, changes []*route53
 
 func main() {
 	log.SetFlags(0)
+
+	var version bool
+	var dry bool
+	var help bool
+
 	program := path.Base(os.Args[0])
-	args := os.Args[1:]
+	flag.BoolVar(&dry, "dry", false, "Don't make any changes")
+	flag.BoolVar(&help, "help", false, "Show help text")
+	flag.BoolVar(&version, "version", false, "Show version")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] <source_profile> <dest_profile> <domain>\n", program)
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+
+	if help {
+		flag.Usage()
+		os.Exit(0)
+	}
+	if version {
+		fmt.Println(Version)
+		os.Exit(0)
+	}
+
+	args := flag.Args()
 	if len(args) < 3 {
-		log.Fatalf("Usage: %s <source_profile> <dest_profile> <domain>\n", program)
+		fmt.Fprintf(os.Stderr, "Wrong number of arguments, %s < 3", len(args))
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] <source_profile> <dest_profile> <domain>\n", program)
+		flag.PrintDefaults()
+		os.Exit(1)
 	}
 	sourceProfile := args[0]
 	destProfile := args[1]
@@ -110,12 +136,23 @@ func main() {
 		panic(err)
 	}
 	changes := createChanges(domain, recordSets)
-	log.Println("Number of changes", len(changes))
-	changeInfo, err := updateRecords(sourceProfile, destProfile, domain, changes)
-	if err != nil {
-		panic(err)
+	log.Println("Number of records to copy", len(changes))
+	if dry {
+		log.Printf("Not copying records to %s since --dry is given\n", destProfile)
+		service := connect(destProfile)
+		zone, err := getHostedZone(service, domain)
+		if err != nil {
+			panic(err)
+		}
+		log.Printf("Destination profile contains %d records, including NS and SOA\n",
+			*zone.ResourceRecordSetCount)
+	} else {
+		changeInfo, err := updateRecords(sourceProfile, destProfile, domain, changes)
+		if err != nil {
+			panic(err)
+		}
+		log.Printf("%d records in '%s' are copied from %s to %s\n",
+			len(changes), domain, sourceProfile, destProfile)
+		log.Printf("%#v\n", changeInfo)
 	}
-	log.Printf("%d records in '%s' are copied from %s to %s",
-		len(changes), domain, sourceProfile, destProfile)
-	log.Printf("%#v\n", changeInfo)
 }

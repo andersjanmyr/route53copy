@@ -1,4 +1,4 @@
-sources = main.go
+sources = main.go version.go
 name = route53copy
 dist/$(name).exe: $(sources)
 	CGO_ENABLED=0 GOOS=windows GOARCH=386 go build -a -installsuffix cgo -ldflags '-s' -o dist/$(name).exe
