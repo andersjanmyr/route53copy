@@ -15,7 +15,7 @@ or with `curl`.
 
 * [OS X](https://github.com/andersjanmyr/route53copy/releases/download/v1.0.0/route53copy-osx)
 * [Linux](https://github.com/andersjanmyr/route53copy/releases/download/v1.0.0/route53copy-linux)
-* [Windows](https://github.com/andersjanmyr/route53copy/releases/download/v0.0.0/route53copy.exe)
+* [Windows](https://github.com/andersjanmyr/route53copy/releases/download/v1.0.0/route53copy.exe)
 
 ### Curl
 
