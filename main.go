@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -95,10 +96,11 @@ func updateRecords(sourceProfile, destProfile, domain string, changes []*route53
 }
 
 func main() {
+	log.SetFlags(0)
 	program := path.Base(os.Args[0])
 	args := os.Args[1:]
 	if len(args) < 3 {
-		fmt.Printf("Usage: %s <source_profile> <dest_profile> <domain>\n", program)
+		log.Fatalf("Usage: %s <source_profile> <dest_profile> <domain>\n", program)
 	}
 	sourceProfile := args[0]
 	destProfile := args[1]
@@ -108,12 +110,12 @@ func main() {
 		panic(err)
 	}
 	changes := createChanges(domain, recordSets)
-	fmt.Println("Number of changes", len(changes))
+	log.Println("Number of changes", len(changes))
 	changeInfo, err := updateRecords(sourceProfile, destProfile, domain, changes)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%d records in '%s' are copied from %s to %s",
+	log.Printf("%d records in '%s' are copied from %s to %s",
 		len(changes), domain, sourceProfile, destProfile)
-	fmt.Printf("%#v\n", changeInfo)
+	log.Printf("%#v\n", changeInfo)
 }
