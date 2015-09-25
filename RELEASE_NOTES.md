@@ -6,4 +6,4 @@
 
 ## Release v1.0.0
 
-* Initial release: `redis53copy <source_profile> <dest_profile> <domain>`
+* Initial release: `route53copy <source_profile> <dest_profile> <domain>`
