@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -56,7 +56,7 @@ func createChanges(domain string, recordSets []*route53.ResourceRecordSet) []*ro
 	var changes []*route53.Change
 	for _, recordSet := range recordSets {
 		if (*recordSet.Type == "NS" || *recordSet.Type == "SOA") && *recordSet.Name == domain {
-			log.Println("Skipping", *recordSet.Type, "record for:", domain)
+			fmt.Println("Skipping", *recordSet.Type, "record for:", domain)
 			continue
 		}
 		change := &route53.Change{
@@ -98,7 +98,7 @@ func main() {
 	program := path.Base(os.Args[0])
 	args := os.Args[1:]
 	if len(args) < 3 {
-		log.Fatalf("Usage: %s <source_profile> <dest_profile> <domain>\n", program)
+		fmt.Printf("Usage: %s <source_profile> <dest_profile> <domain>\n", program)
 	}
 	sourceProfile := args[0]
 	destProfile := args[1]
@@ -108,12 +108,12 @@ func main() {
 		panic(err)
 	}
 	changes := createChanges(domain, recordSets)
-	log.Println("Number of changes", len(changes))
+	fmt.Println("Number of changes", len(changes))
 	changeInfo, err := updateRecords(sourceProfile, destProfile, domain, changes)
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("%d records in '%s' are copied from %s to %s",
+	fmt.Printf("%d records in '%s' are copied from %s to %s",
 		len(changes), domain, sourceProfile, destProfile)
-	log.Printf("%#v\n", changeInfo)
+	fmt.Printf("%#v\n", changeInfo)
 }
