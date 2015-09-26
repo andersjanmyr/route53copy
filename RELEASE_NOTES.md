@@ -1,5 +1,10 @@
 # route53copy, Release Notes
 
+## Release v1.1.2
+
+* Fixed Homebrew build
+* Fixed version problem.
+
 ## Release v1.1.1
 
 * Added Homebrew installation script
