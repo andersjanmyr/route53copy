@@ -10,5 +10,6 @@ mkdir -p $GOPATH/src/${ORG_PATH}
 ln -s ${PWD} $GOPATH/src/${REPO_PATH}
 
 eval $(go env)
+go get github.com/aws/aws-sdk-go/service/route53
 
 CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags '-s' -o bin/route53copy ${REPO_PATH}
