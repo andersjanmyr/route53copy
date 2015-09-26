@@ -25,19 +25,19 @@ or with `curl`.
 
 ### Links
 
-* [OS X](https://github.com/andersjanmyr/route53copy/releases/download/v1.1.1/route53copy-osx)
-* [Linux](https://github.com/andersjanmyr/route53copy/releases/download/v1.1.1/route53copy-linux)
-* [Windows](https://github.com/andersjanmyr/route53copy/releases/download/v1.1.1/route53copy.exe)
+* [OS X](https://github.com/andersjanmyr/route53copy/releases/download/v1.1.2/route53copy-osx)
+* [Linux](https://github.com/andersjanmyr/route53copy/releases/download/v1.1.2/route53copy-linux)
+* [Windows](https://github.com/andersjanmyr/route53copy/releases/download/v1.1.2/route53copy.exe)
 
 ### Curl
 
 ```
 # OS X
-$ curl -L https://github.com/andersjanmyr/route53copy/releases/download/v1.1.1/route53copy-osx \
+$ curl -L https://github.com/andersjanmyr/route53copy/releases/download/v1.1.2/route53copy-osx \
   > /usr/local/bin/route53copy
 
 # Linux
-$ curl -L https://github.com/andersjanmyr/route53copy/releases/download/v1.1.1/route53copy-linux \
+$ curl -L https://github.com/andersjanmyr/route53copy/releases/download/v1.1.2/route53copy-linux \
   > /usr/local/bin/route53copy
 
 # Make executable
