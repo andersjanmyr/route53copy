@@ -13,6 +13,13 @@ must be configured for both the source account and the destination account.
 
 ## Installation
 
+### Homebrew Installation on OS X
+
+```
+$ brew tap andersjanmyr/tap
+$ brew install route53
+```
+
 `route53copy` is a single binary. Install it by right-clicking and `Save as...`
 or with `curl`.
 

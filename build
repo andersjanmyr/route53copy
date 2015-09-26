@@ -1,0 +1,14 @@
+#!/bin/bash -e
+
+ORG_PATH="github.com/andersjanmyr"
+REPO_PATH="${ORG_PATH}/route53copy"
+
+export GOPATH=${PWD}/gopath
+
+rm -f $GOPATH/src/${REPO_PATH}
+mkdir -p $GOPATH/src/${ORG_PATH}
+ln -s ${PWD} $GOPATH/src/${REPO_PATH}
+
+eval $(go env)
+
+CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags '-s' -o bin/route53copy ${REPO_PATH}

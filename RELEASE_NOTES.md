@@ -1,5 +1,9 @@
 # route53copy, Release Notes
 
+## Release v1.1.1
+
+* Added Homebrew installation script
+
 ## Release v1.1.0
 
 * Added --dry --help and --version options
