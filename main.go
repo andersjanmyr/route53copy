@@ -6,15 +6,17 @@ import (
 	"log"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
 )
 
 func connect(profile string) *route53.Route53 {
-	return route53.New(&aws.Config{
+	return route53.New(session.New(), &aws.Config{
 		Region: aws.String("eu-west-1"),
 		Credentials: credentials.NewCredentials(&credentials.SharedCredentialsProvider{
 			Profile: profile,
@@ -53,13 +55,20 @@ func getResourceRecords(profile string, domain string) ([]*route53.ResourceRecor
 	return resp.ResourceRecordSets, nil
 }
 
-func createChanges(domain string, recordSets []*route53.ResourceRecordSet) []*route53.Change {
-	domain = normalizeDomain(domain)
+func createChanges(srcDomain string, destDomain string, recordSets []*route53.ResourceRecordSet) []*route53.Change {
+	//srcDomain = normalizeDomain(srcDomain)
 	var changes []*route53.Change
+	//s := []string{srcDomain, "$"}
+	re := regexp.MustCompile(strings.Join([]string{srcDomain, ".$"}, ""))
 	for _, recordSet := range recordSets {
-		if (*recordSet.Type == "NS" || *recordSet.Type == "SOA") && *recordSet.Name == domain {
+		if (*recordSet.Type == "NS" || *recordSet.Type == "SOA" || *recordSet.Type == "TXT") && *recordSet.Name == normalizeDomain(srcDomain) {
+			log.Printf("Skipping %s %s", *recordSet.Name, *recordSet.Type)
 			continue
 		}
+
+		//log.Printf(*recordSet.Name)
+		*recordSet.Name = normalizeDomain(re.ReplaceAllLiteralString(*recordSet.Name, destDomain))
+		//log.Printf(*recordSet.Name)
 		change := &route53.Change{
 			Action:            aws.String("UPSERT"),
 			ResourceRecordSet: recordSet,
@@ -73,9 +82,9 @@ func createChanges(domain string, recordSets []*route53.ResourceRecordSet) []*ro
 func normalizeDomain(domain string) string {
 	if strings.HasSuffix(domain, ".") {
 		return domain
-	} else {
-		return domain + "."
 	}
+	return domain + "."
+
 }
 
 func updateRecords(sourceProfile, destProfile, domain string, changes []*route53.Change) (*route53.ChangeInfo, error) {
@@ -91,7 +100,7 @@ func updateRecords(sourceProfile, destProfile, domain string, changes []*route53
 			Comment: aws.String("Importing ALL records from " + sourceProfile),
 		},
 	}
-	resp, err := service.ChangeResourceRecordSets(params)
+	resp, _ := service.ChangeResourceRecordSets(params)
 	return resp.ChangeInfo, nil
 }
 
@@ -124,35 +133,44 @@ func main() {
 	args := flag.Args()
 	if len(args) < 3 {
 		fmt.Fprintf(os.Stderr, "Wrong number of arguments, %d < 3\n", len(args))
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] <source_profile> <dest_profile> <domain>\n", program)
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] <source_profile> <dest_profile> <srcDomain> [destDomain]\n", program)
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+
 	sourceProfile := args[0]
 	destProfile := args[1]
-	domain := args[2]
-	recordSets, err := getResourceRecords(sourceProfile, domain)
+	srcDomain := args[2]
+	destDomain := srcDomain
+	if len(args) == 4 {
+		destDomain = args[3]
+	}
+
+	recordSets, err := getResourceRecords(sourceProfile, srcDomain)
 	if err != nil {
 		panic(err)
 	}
-	changes := createChanges(domain, recordSets)
+	//log.Printf(" %s ", recordSets)
+	changes := createChanges(srcDomain, destDomain, recordSets)
 	log.Println("Number of records to copy", len(changes))
+
 	if dry {
-		log.Printf("Not copying records to %s since --dry is given\n", destProfile)
+		log.Printf("Not copying records to %s since -dry is given\n", destProfile)
 		service := connect(destProfile)
-		zone, err := getHostedZone(service, domain)
+		zone, err := getHostedZone(service, destDomain)
 		if err != nil {
 			panic(err)
 		}
 		log.Printf("Destination profile contains %d records, including NS and SOA\n",
 			*zone.ResourceRecordSetCount)
 	} else {
-		changeInfo, err := updateRecords(sourceProfile, destProfile, domain, changes)
+		changeInfo, err := updateRecords(sourceProfile, destProfile, destDomain, changes)
 		if err != nil {
 			panic(err)
 		}
 		log.Printf("%d records in '%s' are copied from %s to %s\n",
-			len(changes), domain, sourceProfile, destProfile)
+			len(changes), destDomain, sourceProfile, destProfile)
 		log.Printf("%#v\n", changeInfo)
 	}
+
 }
