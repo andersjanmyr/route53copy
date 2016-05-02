@@ -61,7 +61,10 @@ Usage: route53copy [options] <source_profile> <dest_profile> <source_domain> [de
 ```
 
 ```
-$ route53copy aws_profile1 aws_profile2 example.com foobar.com
+$ route53copy -exclude "SOA,NS,MX" aws_profile1 aws_profile2 example.com foobar.com
+Skipping example.com. NS
+Skipping example.com. SOA
+Skipping example.com. MX
 Number of Records:  55
 53 records in 'example.com' are copied from aws_profile1-dev to aws_profile2
 {
