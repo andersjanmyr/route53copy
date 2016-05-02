@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -14,6 +15,37 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
 )
+
+var version, dry, help bool
+
+type excludesT []string
+
+var exclude excludesT
+
+func (e *excludesT) String() string {
+	return fmt.Sprint(*e)
+}
+
+func (e *excludesT) Set(value string) error {
+	for _, t := range strings.Split(value, ",") {
+		*e = append(*e, t)
+	}
+	sort.Strings(*e)
+	return nil
+}
+
+func (e *excludesT) Len() int {
+	return len(*e)
+}
+
+func (e *excludesT) Contains(value string) bool {
+	i := sort.SearchStrings(*e, value)
+	if i < len(*e) && (*e)[i] == value {
+		//log.Printf("%s found \"%s\" at excludes[%d]\n", value, *e, i)
+		return true
+	}
+	return false
+}
 
 func connect(profile string) *route53.Route53 {
 	return route53.New(session.New(), &aws.Config{
@@ -56,19 +88,14 @@ func getResourceRecords(profile string, domain string) ([]*route53.ResourceRecor
 }
 
 func createChanges(srcDomain string, destDomain string, recordSets []*route53.ResourceRecordSet) []*route53.Change {
-	//srcDomain = normalizeDomain(srcDomain)
 	var changes []*route53.Change
-	//s := []string{srcDomain, "$"}
 	re := regexp.MustCompile(strings.Join([]string{srcDomain, ".$"}, ""))
 	for _, recordSet := range recordSets {
-		if (*recordSet.Type == "NS" || *recordSet.Type == "SOA" || *recordSet.Type == "TXT") && *recordSet.Name == normalizeDomain(srcDomain) {
+		if exclude.Contains(*recordSet.Type) && *recordSet.Name == normalizeDomain(srcDomain) {
 			log.Printf("Skipping %s %s", *recordSet.Name, *recordSet.Type)
 			continue
 		}
-
-		//log.Printf(*recordSet.Name)
 		*recordSet.Name = normalizeDomain(re.ReplaceAllLiteralString(*recordSet.Name, destDomain))
-		//log.Printf(*recordSet.Name)
 		change := &route53.Change{
 			Action:            aws.String("UPSERT"),
 			ResourceRecordSet: recordSet,
@@ -76,7 +103,6 @@ func createChanges(srcDomain string, destDomain string, recordSets []*route53.Re
 		changes = append(changes, change)
 	}
 	return changes
-
 }
 
 func normalizeDomain(domain string) string {
@@ -84,7 +110,6 @@ func normalizeDomain(domain string) string {
 		return domain
 	}
 	return domain + "."
-
 }
 
 func updateRecords(sourceProfile, destProfile, domain string, changes []*route53.Change) (*route53.ChangeInfo, error) {
@@ -104,23 +129,27 @@ func updateRecords(sourceProfile, destProfile, domain string, changes []*route53
 	return resp.ChangeInfo, nil
 }
 
-func main() {
-	log.SetFlags(0)
-
-	var version bool
-	var dry bool
-	var help bool
-
-	program := path.Base(os.Args[0])
+func init() {
 	flag.BoolVar(&dry, "dry", false, "Don't make any changes")
 	flag.BoolVar(&help, "help", false, "Show help text")
 	flag.BoolVar(&version, "version", false, "Show version")
+	flag.Var(&exclude, "exclude", "Comma separated list of DNS entries types of the base domain to be ignored. If not set SOA and NS will be excluded.")
+}
+
+func main() {
+	log.SetFlags(0)
+
+	program := path.Base(os.Args[0])
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] <source_profile> <dest_profile> <domain>\n", program)
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] <source_profile> <dest_profile> <source_domain> [dest_domain]\n", program)
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 
+	// set defaults
+	if len(exclude) == 0 {
+		exclude.Set("SOA,NS")
+	}
 	if help {
 		flag.Usage()
 		os.Exit(0)
@@ -150,7 +179,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	//log.Printf(" %s ", recordSets)
 	changes := createChanges(srcDomain, destDomain, recordSets)
 	log.Println("Number of records to copy", len(changes))
 
