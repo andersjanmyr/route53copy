@@ -66,7 +66,7 @@ Skipping example.com. NS
 Skipping example.com. SOA
 Skipping example.com. MX
 Number of Records:  55
-53 records in 'example.com' are copied from aws_profile1-dev to aws_profile2
+52 records in 'example.com' are copied from aws_profile1-dev to aws_profile2
 {
   Comment: "Importing ALL records from aws_profile",
   Id: "/change/C3QI8LAP4H5G9",
