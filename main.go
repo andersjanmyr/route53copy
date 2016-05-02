@@ -80,11 +80,26 @@ func getResourceRecords(profile string, domain string) ([]*route53.ResourceRecor
 	params := &route53.ListResourceRecordSetsInput{
 		HostedZoneId: aws.String(*zone.Id),
 	}
-	resp, err := service.ListResourceRecordSets(params)
-	if err != nil {
-		return nil, err
+	var rrsets []*route53.ResourceRecordSet
+
+	for {
+		var resp *route53.ListResourceRecordSetsOutput
+		resp, err = service.ListResourceRecordSets(params)
+
+		if err != nil {
+			return nil, err
+		}
+
+		rrsets = append(rrsets, resp.ResourceRecordSets...)
+		if *resp.IsTruncated {
+			params.StartRecordName = resp.NextRecordName
+			params.StartRecordType = resp.NextRecordType
+			params.StartRecordIdentifier = resp.NextRecordIdentifier
+		} else {
+			break
+		}
 	}
-	return resp.ResourceRecordSets, nil
+	return rrsets, nil
 }
 
 func createChanges(srcDomain string, destDomain string, recordSets []*route53.ResourceRecordSet) []*route53.Change {
