@@ -196,22 +196,21 @@ func main() {
 	var hostedZonesArray []string
 
 	if len(hostedZones) > 0 {
-		for _, t := range strings.Split(hostedZones, ",") {
-			hostedZonesArray = append(hostedZonesArray, t)
-		}
-
+		hostedZonesArray = strings.Split(hostedZones, ",")
 	}
 
 	if len(hostedZonesArray) > 0 && len(hostedZonesArray) < 2 {
-		recordSets, err = getResourceRecordsFromHostedZoneId(sourceProfile, hostedZones)
-	} else if len(hostedZonesArray) > 2 {
+		hostedZone := string(hostedZonesArray[0])
+		recordSets, err = getResourceRecordsFromHostedZoneId(sourceProfile, hostedZone)
+	} else if len(hostedZonesArray) > 1 {
 		for i := 0; i < len(hostedZonesArray); i++ {
 			hostedZone := string(hostedZonesArray[i])
 			recordSet, err := getResourceRecordsFromHostedZoneId(sourceProfile, hostedZone)
 			if err != nil {
 				panic(err)
 			}
-			recordSets = append(recordSets, recordSet[0])
+			log.Printf("%v", recordSet)
+			recordSets = append(recordSets, recordSet...)
 		}
 	} else {
 		recordSets, err = getResourceRecords(sourceProfile, srcDomain)
@@ -222,6 +221,7 @@ func main() {
 
 	changes := createChanges(srcDomain, destDomain, recordSets)
 	log.Println("Number of records to copy", len(changes))
+	log.Printf("%v", changes)
 
 	if dry {
 		log.Printf("Not copying records to %s since -dry is given\n", destProfile)
