@@ -1,7 +1,6 @@
 package main
 
 import (
-	//"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -197,11 +196,6 @@ func main() {
 	var hostedZonesArray []string
 
 	if len(hostedZones) > 0 {
-		/*
-			err := json.Unmarshal([]byte(hostedZones), &hostedZonesArray)
-			if err != nil {
-				panic(err)
-			}*/
 		for _, t := range strings.Split(hostedZones, ",") {
 			hostedZonesArray = append(hostedZonesArray, t)
 		}
