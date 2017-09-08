@@ -220,7 +220,6 @@ func main() {
 
 	changes := createChanges(srcDomain, destDomain, recordSets)
 	log.Println("Number of records to copy", len(changes))
-	log.Printf("%v", changes)
 
 	if dry {
 		log.Printf("Not copying records to %s since -dry is given\n", destProfile)
