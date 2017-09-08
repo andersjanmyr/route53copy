@@ -22,6 +22,8 @@ type excludesT []string
 
 var exclude excludesT
 
+var hostedZones string
+
 func (e *excludesT) String() string {
 	return fmt.Sprint(*e)
 }
@@ -87,6 +89,18 @@ func getResourceRecords(profile string, domain string) ([]*route53.ResourceRecor
 	return resp.ResourceRecordSets, nil
 }
 
+func getResourceRecordsFromHostedZoneId(profile string, hostedZoneId string) ([]*route53.ResourceRecordSet, error) {
+	service := connect(profile)
+	params := &route53.ListResourceRecordSetsInput{
+		HostedZoneId: aws.String(hostedZoneId),
+	}
+	resp, err := service.ListResourceRecordSets(params)
+	if err != nil {
+		return nil, err
+	}
+	return resp.ResourceRecordSets, nil
+}
+
 func createChanges(srcDomain string, destDomain string, recordSets []*route53.ResourceRecordSet) []*route53.Change {
 	var changes []*route53.Change
 	re := regexp.MustCompile(strings.Join([]string{srcDomain, ".$"}, ""))
@@ -134,6 +148,7 @@ func init() {
 	flag.BoolVar(&help, "help", false, "Show help text")
 	flag.BoolVar(&version, "version", false, "Show version")
 	flag.Var(&exclude, "exclude", "Comma separated list of DNS entries types of the base domain to be ignored. If not set SOA and NS will be excluded.")
+	flag.StringVar(&hostedZones, "hosted-zones", "", "Comma separated lsit of hosted-zones for accounts with access limmited to specific hosted zones")
 }
 
 func main() {
@@ -175,10 +190,34 @@ func main() {
 		destDomain = args[3]
 	}
 
-	recordSets, err := getResourceRecords(sourceProfile, srcDomain)
-	if err != nil {
-		panic(err)
+	var recordSets []*route53.ResourceRecordSet
+	var err error
+
+	var hostedZonesArray []string
+
+	if len(hostedZones) > 0 {
+		hostedZonesArray = strings.Split(hostedZones, ",")
 	}
+
+	if len(hostedZonesArray) > 0 && len(hostedZonesArray) < 2 {
+		hostedZone := string(hostedZonesArray[0])
+		recordSets, err = getResourceRecordsFromHostedZoneId(sourceProfile, hostedZone)
+	} else if len(hostedZonesArray) > 1 {
+		for i := 0; i < len(hostedZonesArray); i++ {
+			hostedZone := string(hostedZonesArray[i])
+			recordSet, err := getResourceRecordsFromHostedZoneId(sourceProfile, hostedZone)
+			if err != nil {
+				panic(err)
+			}
+			recordSets = append(recordSets, recordSet...)
+		}
+	} else {
+		recordSets, err = getResourceRecords(sourceProfile, srcDomain)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	changes := createChanges(srcDomain, destDomain, recordSets)
 	log.Println("Number of records to copy", len(changes))
 
