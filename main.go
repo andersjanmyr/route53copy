@@ -1,6 +1,7 @@
 package main
 
 import (
+	//"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -22,7 +23,7 @@ type excludesT []string
 
 var exclude excludesT
 
-var hz string
+var hostedZones string
 
 func (e *excludesT) String() string {
 	return fmt.Sprint(*e)
@@ -89,7 +90,7 @@ func getResourceRecords(profile string, domain string) ([]*route53.ResourceRecor
 	return resp.ResourceRecordSets, nil
 }
 
-func getResourceRecordsByHostedZone(profile string, hostedZoneId string) ([]*route53.ResourceRecordSet, error) {
+func getResourceRecordsFromHostedZoneId(profile string, hostedZoneId string) ([]*route53.ResourceRecordSet, error) {
 	service := connect(profile)
 	params := &route53.ListResourceRecordSetsInput{
 		HostedZoneId: aws.String(hostedZoneId),
@@ -148,7 +149,7 @@ func init() {
 	flag.BoolVar(&help, "help", false, "Show help text")
 	flag.BoolVar(&version, "version", false, "Show version")
 	flag.Var(&exclude, "exclude", "Comma separated list of DNS entries types of the base domain to be ignored. If not set SOA and NS will be excluded.")
-	flag.StringVar(&hz, "hosted-zones", "", "Comma separated lsit of hosted-zones")
+	flag.StringVar(&hostedZones, "hosted-zones", "", "Comma separated lsit of hosted-zones for accounts with access limmited to specific hosted zones")
 }
 
 func main() {
@@ -193,8 +194,31 @@ func main() {
 	var recordSets []*route53.ResourceRecordSet
 	var err error
 
-	if len(hz) > 0 {
-		recordSets, err = getResourceRecordsByHostedZone(sourceProfile, hz)
+	var hostedZonesArray []string
+
+	if len(hostedZones) > 0 {
+		/*
+			err := json.Unmarshal([]byte(hostedZones), &hostedZonesArray)
+			if err != nil {
+				panic(err)
+			}*/
+		for _, t := range strings.Split(hostedZones, ",") {
+			hostedZonesArray = append(hostedZonesArray, t)
+		}
+
+	}
+
+	if len(hostedZonesArray) > 0 && len(hostedZonesArray) < 2 {
+		recordSets, err = getResourceRecordsFromHostedZoneId(sourceProfile, hostedZones)
+	} else if len(hostedZonesArray) > 2 {
+		for i := 0; i < len(hostedZonesArray); i++ {
+			hostedZone := string(hostedZonesArray[i])
+			recordSet, err := getResourceRecordsFromHostedZoneId(sourceProfile, hostedZone)
+			if err != nil {
+				panic(err)
+			}
+			recordSets = append(recordSets, recordSet[0])
+		}
 	} else {
 		recordSets, err = getResourceRecords(sourceProfile, srcDomain)
 		if err != nil {
