@@ -209,7 +209,6 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			log.Printf("%v", recordSet)
 			recordSets = append(recordSets, recordSet...)
 		}
 	} else {
