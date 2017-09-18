@@ -109,11 +109,23 @@ func getResourceRecordsFromHostedZoneId(profile string, hostedZoneId string) ([]
 	params := &route53.ListResourceRecordSetsInput{
 		HostedZoneId: aws.String(hostedZoneId),
 	}
-	resp, err := service.ListResourceRecordSets(params)
-	if err != nil {
-		return nil, err
+	var rrsets []*route53.ResourceRecordSet
+	for {
+		resp, err := service.ListResourceRecordSets(params)
+		if err != nil {
+			return nil, err
+		}
+
+		rrsets = append(rrsets, resp.ResourceRecordSets...)
+		if *resp.IsTruncated {
+			params.StartRecordName = resp.NextRecordName
+			params.StartRecordType = resp.NextRecordType
+			params.StartRecordIdentifier = resp.NextRecordIdentifier
+		} else {
+			break
+		}
 	}
-	return resp.ResourceRecordSets, nil
+	return rrsets, nil
 }
 
 func createChanges(srcDomain string, destDomain string, recordSets []*route53.ResourceRecordSet) []*route53.Change {
