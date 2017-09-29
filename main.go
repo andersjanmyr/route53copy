@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/route53"
 )
 
-var version, dry, help bool
+var version, dry, help, showChanges bool
 
 type excludesT []string
 
@@ -104,10 +104,10 @@ func getResourceRecords(profile string, domain string) ([]*route53.ResourceRecor
 	return rrsets, nil
 }
 
-func getResourceRecordsFromHostedZoneId(profile string, hostedZoneId string) ([]*route53.ResourceRecordSet, error) {
+func getResourceRecordsFromHostedZoneID(profile string, hostedZoneID string) ([]*route53.ResourceRecordSet, error) {
 	service := connect(profile)
 	params := &route53.ListResourceRecordSetsInput{
-		HostedZoneId: aws.String(hostedZoneId),
+		HostedZoneId: aws.String(hostedZoneID),
 	}
 	var rrsets []*route53.ResourceRecordSet
 	for {
@@ -157,6 +157,7 @@ func updateRecords(sourceProfile, destProfile, domain string, changes []*route53
 	service := connect(destProfile)
 	zone, err := getHostedZone(service, domain)
 	if err != nil {
+		log.Printf("failed to get hosted zone")
 		return nil, err
 	}
 	params := &route53.ChangeResourceRecordSetsInput{
@@ -170,9 +171,70 @@ func updateRecords(sourceProfile, destProfile, domain string, changes []*route53
 	return resp.ChangeInfo, nil
 }
 
+func executeChange(sourceProfile, destProfile, domain string, changes []*route53.Change) (*route53.ChangeInfo, error) {
+	changeInfo, err := updateRecords(sourceProfile, destProfile, domain, changes)
+	if err != nil {
+		log.Printf("Failed to update records")
+		return nil, err
+	}
+	if changeInfo != nil {
+		log.Printf("%d records in '%s' are copied from %s to %s\n",
+			len(changes), domain, sourceProfile, destProfile)
+		log.Printf("%#v\n", changeInfo)
+	} else {
+		log.Printf("Something went wrong!  Change info was nil.")
+	}
+	return nil, nil
+}
+
+func processChangeBatch(sourceProfile, destProfile, domain string, changes []*route53.Change) (*route53.ChangeInfo, error) {
+
+	var changeInfo *route53.ChangeInfo
+	var err error
+
+	// AWS route53 treats each chnage as 2 requests
+	// No more than 1000 requests may be processed at a time
+	total := len(changes) * 2
+	var batches int
+	if total > 1000 {
+		if total%1000 != 0 {
+			batches = (total / 1000) + 1
+		} else {
+			batches = total / 1000
+		}
+		log.Printf("Processing changes in %d batches", batches)
+		var start, end int
+		for i := 0; i < batches; i++ {
+			if i < 1 {
+				start = i
+			} else {
+				start = i * (1000 / 2)
+			}
+			if i+1 == batches {
+				end = start + (total / 2)
+			} else {
+				end = start + (1000 / 2)
+			}
+			log.Printf("Processing changes %d through %d", start, end)
+			changeInfo, err = executeChange(sourceProfile, destProfile, domain, changes[start:end])
+			if err != nil {
+				return nil, err
+			}
+			total = total - (end * 2)
+		}
+	} else {
+		changeInfo, err = executeChange(sourceProfile, destProfile, domain, changes)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return changeInfo, nil
+}
+
 func init() {
 	flag.BoolVar(&dry, "dry", false, "Don't make any changes")
 	flag.BoolVar(&help, "help", false, "Show help text")
+	flag.BoolVar(&showChanges, "show-changes", false, "Show change list")
 	flag.BoolVar(&version, "version", false, "Show version")
 	flag.Var(&exclude, "exclude", "Comma separated list of DNS entries types of the base domain to be ignored. If not set SOA and NS will be excluded.")
 	flag.StringVar(&hostedZones, "hosted-zones", "", "Comma separated lsit of hosted-zones for accounts with access limmited to specific hosted zones")
@@ -228,11 +290,11 @@ func main() {
 
 	if len(hostedZonesArray) > 0 && len(hostedZonesArray) < 2 {
 		hostedZone := string(hostedZonesArray[0])
-		recordSets, err = getResourceRecordsFromHostedZoneId(sourceProfile, hostedZone)
+		recordSets, err = getResourceRecordsFromHostedZoneID(sourceProfile, hostedZone)
 	} else if len(hostedZonesArray) > 1 {
 		for i := 0; i < len(hostedZonesArray); i++ {
 			hostedZone := string(hostedZonesArray[i])
-			recordSet, err := getResourceRecordsFromHostedZoneId(sourceProfile, hostedZone)
+			recordSet, err := getResourceRecordsFromHostedZoneID(sourceProfile, hostedZone)
 			if err != nil {
 				panic(err)
 			}
@@ -248,6 +310,10 @@ func main() {
 	changes := createChanges(srcDomain, destDomain, recordSets)
 	log.Println("Number of records to copy", len(changes))
 
+	if showChanges {
+		log.Printf("%#v\n", changes)
+	}
+
 	if dry {
 		log.Printf("Not copying records to %s since -dry is given\n", destProfile)
 		service := connect(destProfile)
@@ -258,13 +324,7 @@ func main() {
 		log.Printf("Destination profile contains %d records, including NS and SOA\n",
 			*zone.ResourceRecordSetCount)
 	} else {
-		changeInfo, err := updateRecords(sourceProfile, destProfile, destDomain, changes)
-		if err != nil {
-			panic(err)
-		}
-		log.Printf("%d records in '%s' are copied from %s to %s\n",
-			len(changes), destDomain, sourceProfile, destProfile)
-		log.Printf("%#v\n", changeInfo)
+		processChangeBatch(sourceProfile, destProfile, destDomain, changes)
 	}
 
 }
