@@ -49,15 +49,21 @@ $ chmod a+x /usr/local/bin/route53copy
 
 ```
 $ route53copy --help
-Usage: route53copy [options] <source_profile> <dest_profile> <source_domain> [dest_domain]
+
+route53copy [options] <source_profile> <dest_profile> <srcDomain> [destDomain]
   -dry
         Don't make any changes
   -exclude value
-        Comma separated list of DNS entries types of the base domain to be ignored. If not set SOA and NS will be excluded. (default [])
+        Comma separated list of DNS entries types of the base domain to be ignored. If not set SOA and NS will be excluded.
   -help
         Show help text
+  -hosted-zones string
+        Comma separated lsit of hosted-zones for accounts with access limmited to specific hosted zones
+  -show-changes
+        Show change list
   -version
         Show version
+
 ```
 
 ```
