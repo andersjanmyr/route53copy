@@ -43,7 +43,6 @@ func (e *excludesT) Len() int {
 func (e *excludesT) Contains(value string) bool {
 	i := sort.SearchStrings(*e, value)
 	if i < len(*e) && (*e)[i] == value {
-		//log.Printf("%s found \"%s\" at excludes[%d]\n", value, *e, i)
 		return true
 	}
 	return false
