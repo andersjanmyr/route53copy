@@ -1,13 +1,13 @@
 # route53copy, copies resource records between two AWS Route53 accounts
 
-`route53copy` copies resource records from one AWS account to another. It
+`route53copy` copies resource records from one AWS account to another (or inside the same account). It
 creates a `ChangeResourceRecordSet` with `UPSERT` for all `ResourceRecord`s of
 the source account and sends it to the destination account.
 
 The top-level `SOA` and `NS` are not included in the change set since they
 should already exist in the destination account.
 
-The domain must already exist in both accounts and [AWS Named Profiles](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-multiple-profiles)
+The destination domain must already exist in the destination account and [AWS Named Profiles](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-multiple-profiles)
 must be configured for both the source account and the destination account.
 
 
@@ -49,19 +49,30 @@ $ chmod a+x /usr/local/bin/route53copy
 
 ```
 $ route53copy --help
-Usage: route53copy [options] <source_profile> <dest_profile> <domain>
+
+route53copy [options] <source_profile> <dest_profile> <srcDomain> [destDomain]
   -dry
         Don't make any changes
+  -exclude value
+        Comma separated list of DNS entries types of the base domain to be ignored. If not set SOA and NS will be excluded.
   -help
         Show help text
+  -hosted-zones string
+        Comma separated lsit of hosted-zones for accounts with access limmited to specific hosted zones
+  -show-changes
+        Show change list
   -version
         Show version
+
 ```
 
 ```
-$ route53copy aws_profile1 aws_profile2 example.com
+$ route53copy -exclude "SOA,NS,MX" aws_profile1 aws_profile2 example.com foobar.com
+Skipping example.com. NS
+Skipping example.com. SOA
+Skipping example.com. MX
 Number of Records:  55
-53 records in 'example.com' are copied from aws_profile1-dev to aws_profile2
+52 records in 'example.com' are copied from aws_profile1-dev to aws_profile2
 {
   Comment: "Importing ALL records from aws_profile",
   Id: "/change/C3QI8LAP4H5G9",
@@ -73,4 +84,3 @@ Number of Records:  55
 ## Release Notes
 
 A list of changes are in the [RELEASE_NOTES](RELEASE_NOTES.md).
-
